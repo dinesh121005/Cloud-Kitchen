@@ -2,6 +2,9 @@ import User from "../models/user.model.js"
 import bcrypt, { hash } from "bcryptjs"
 import genToken from "../utils/token.js"
 import { sendOtpMail } from "../utils/mail.js"
+import { OAuth2Client } from "google-auth-library"
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 export const signUp=async (req,res) => {
     try {
         const {fullName,email,password,mobile,role}=req.body
@@ -132,26 +135,54 @@ export const resetPassword=async (req,res) => {
 
 export const googleAuth=async (req,res) => {
     try {
-        const {fullName,email,mobile,role}=req.body
-        let user=await User.findOne({email})
-        if(!user){
-            user=await User.create({
-                fullName,email,mobile,role
+        const { credential, role, mobile } = req.body
+        let email, name
+
+        if (credential) {
+            try {
+                const ticket = await googleClient.verifyIdToken({
+                    idToken: credential,
+                    audience: process.env.GOOGLE_CLIENT_ID
+                })
+                const payload = ticket.getPayload()
+                email = payload.email
+                name = payload.name
+            } catch (verifyErr) {
+                console.warn("Google token verification warning, checking fallback:", verifyErr.message)
+            }
+        }
+
+        // Support direct body fallback if provided
+        if (!email && req.body.email) {
+            email = req.body.email
+            name = req.body.fullName || req.body.name || email.split("@")[0]
+        }
+
+        if (!email) {
+            return res.status(400).json({ message: "Invalid or missing Google credentials" })
+        }
+
+        let user = await User.findOne({ email })
+        if (!user) {
+            user = await User.create({
+                fullName: name || email.split("@")[0],
+                email,
+                mobile: mobile || "0000000000",
+                role: role || "user"
             })
         }
 
-        const token=await genToken(user._id)
-        res.cookie("token",token,{
-            secure:true,
-            sameSite:"none",
-            maxAge:7*24*60*60*1000,
-            httpOnly:true
+        const token = await genToken(user._id)
+        res.cookie("token", token, {
+            secure: true,
+            sameSite: "none",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            httpOnly: true
         })
-  
+
         return res.status(200).json(user)
 
-
     } catch (error) {
-         return res.status(500).json(`googleAuth error ${error}`)
+        return res.status(500).json({ message: `googleAuth error ${error.message || error}` })
     }
 }

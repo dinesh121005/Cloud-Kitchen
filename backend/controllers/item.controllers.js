@@ -39,9 +39,11 @@ export const editItem = async (req, res) => {
         if (req.file) {
             image = await uploadOnCloudinary(req.file.path)
         }
-        const item = await Item.findByIdAndUpdate(itemId, {
-            name, category, foodType, price, image
-        }, { new: true })
+        const updateData = { name, category, foodType, price }
+        if (image) {
+            updateData.image = image
+        }
+        const item = await Item.findByIdAndUpdate(itemId, updateData, { new: true })
         if (!item) {
             return res.status(400).json({ message: "item not found" })
         }

@@ -12,12 +12,14 @@ export const createEditShop=async (req,res) => {
        let shop=await Shop.findOne({owner:req.userId})
        if(!shop){
         shop=await Shop.create({
-        name,city,state,address,image,owner:req.userId
-       })
+            name,city,state,address,image,owner:req.userId
+        })
        }else{
-         shop=await Shop.findByIdAndUpdate(shop._id,{
-        name,city,state,address,image,owner:req.userId
-       },{new:true})
+         const updatePayload = { name, city, state, address, owner: req.userId }
+         if (image) {
+             updatePayload.image = image
+         }
+         shop=await Shop.findByIdAndUpdate(shop._id, updatePayload, {new:true})
        }
       
        await shop.populate("owner items")

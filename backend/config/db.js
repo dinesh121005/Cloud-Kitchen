@@ -2,10 +2,11 @@ import mongoose from "mongoose"
 
 const connectDb=async () => {
     try {
-        await mongoose.connect(process.env.MONGODB_URL)
-        console.log("db connected")
+        const url = process.env.MONGODB_URI || process.env.MONGODB_URL
+        await mongoose.connect(url)
+        console.log("MongoDB Atlas connected successfully")
     } catch (error) {
-        console.log("db error")
+        console.error("MongoDB Atlas connection error:", error.message)
     }
 }
 

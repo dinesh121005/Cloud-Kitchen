@@ -1,6 +1,8 @@
 import express from "express"
 import dotenv from "dotenv"
 dotenv.config()
+import path from "path"
+import { fileURLToPath } from "url"
 import connectDb from "./config/db.js"
 import cookieParser from "cookie-parser"
 import authRouter from "./routes/auth.routes.js"
@@ -14,12 +16,22 @@ import http from "http"
 import { Server } from "socket.io"
 import { socketHandler } from "./socket.js"
 
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
 const app=express()
 const server=http.createServer(app)
 
+const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://fooddelivery-dydo.onrender.com"
+].filter(Boolean)
+
 const io=new Server(server,{
    cors:{
-    origin:"https://fooddelivery-dydo.onrender.com",
+    origin: allowedOrigins,
     credentials:true,
     methods:['POST','GET']
 }
@@ -27,15 +39,14 @@ const io=new Server(server,{
 
 app.set("io",io)
 
-
-
 const port=process.env.PORT || 5000
 app.use(cors({
-    origin:"https://fooddelivery-dydo.onrender.com",
+    origin: allowedOrigins,
     credentials:true
 }))
 app.use(express.json())
 app.use(cookieParser())
+app.use("/public", express.static(path.join(__dirname, "public")))
 app.use("/api/auth",authRouter)
 app.use("/api/user",userRouter)
 app.use("/api/shop",shopRouter)
